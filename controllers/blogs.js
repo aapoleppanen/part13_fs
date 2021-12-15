@@ -1,15 +1,21 @@
 const router = require("express").Router();
 
-const { Blog } = require("../models");
+const { Blog, User } = require("../models/");
 
-const { blogFinder } = require("../util/middleware");
+const { blogFinder, userExtractor } = require("../util/middleware");
 
 router.get("/", async (req, res) => {
-	const blogs = await Blog.findAll();
+	const blogs = await Blog.findAll({
+		attributes: { exclude: ["userId"] },
+		include: {
+			model: User,
+			attributes: ["name"],
+		},
+	});
 	res.json(blogs);
 });
 
-router.post("/", async (req, res, next) => {
+router.post("/", userExtractor, async (req, res, next) => {
 	try {
 		const body = req.body;
 		if (body.title === undefined || body.url === undefined) {
@@ -20,6 +26,8 @@ router.post("/", async (req, res, next) => {
 			title: body.title,
 			likes: body.likes || undefined,
 			url: body.url,
+			userId: req.user.id,
+			date: new Date(),
 		}).catch((e) => res.status(400).json(e));
 		res.json(blog);
 	} catch (e) {
@@ -32,13 +40,15 @@ router.get("/:id", blogFinder, async (req, res) => {
 	else res.status(404).end();
 });
 
-router.delete("/:id", blogFinder, async (req, res, next) => {
+router.delete("/:id", userExtractor, blogFinder, async (req, res, next) => {
 	try {
-		if (req.blog) await req.blog.destroy();
+		if (req.blog.userId !== req.user.id)
+			throw new Error("Cannot delete other users blogs");
+		else if (req.blog) await req.blog.destroy();
 		else res.status(404).end();
 		res.status(200).end();
 	} catch (e) {
-		next("Error when deleting");
+		next(e);
 	}
 });
 
