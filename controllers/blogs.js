@@ -1,16 +1,31 @@
 const router = require("express").Router();
 
 const { Blog, User } = require("../models/");
+const { Op } = require("sequelize");
 
 const { blogFinder, userExtractor } = require("../util/middleware");
+const { sequelize } = require("../util/db");
 
 router.get("/", async (req, res) => {
+	let where = {};
+	if (req.query.search) {
+		where = {
+			[Op.or]: [
+				{ title: { [Op.iLike]: `%${req.query.search}%` } },
+				{ author: { [Op.iLike]: `%${req.query.search}%` } },
+			],
+		};
+	}
+	console.log(req.query);
+
 	const blogs = await Blog.findAll({
 		attributes: { exclude: ["userId"] },
 		include: {
 			model: User,
 			attributes: ["name"],
 		},
+		order: [["likes", "DESC"]],
+		where,
 	});
 	res.json(blogs);
 });
@@ -52,7 +67,7 @@ router.delete("/:id", userExtractor, blogFinder, async (req, res, next) => {
 	}
 });
 
-router.put("/:id", blogFinder, async (req, res, next) => {
+router.put("/:id", blogFinder, async (req, res, ne2xt) => {
 	if (req.blog) {
 		req.blog.likes += 1;
 		await req.blog.save();
