@@ -25,6 +25,19 @@ Blog.init(
 			type: DataTypes.INTEGER,
 			defaultValue: 0,
 		},
+		year: {
+			type: DataTypes.INTEGER,
+			hasYear(value) {
+				if (
+					parseInt(value) < 1991 ||
+					parseInt(value) > new Date().getFullYear
+				) {
+					throw new Error(
+						"Only blogs posted between 1991 and today are allowed."
+					);
+				}
+			},
+		},
 	},
 	{
 		sequelize,
