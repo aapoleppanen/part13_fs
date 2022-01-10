@@ -1,9 +1,11 @@
 const { request } = require("express");
-const { Blog, User, ReadingList } = require("../models");
+const { Blog, User, ReadingList, Session } = require("../models");
 
 const jwt = require("jsonwebtoken");
 
 const { SECRET } = require("../util/config");
+
+const { Op } = require("sequelize");
 
 const blogFinder = async (req, res, next) => {
 	req.blog = await Blog.findByPk(req.params.id);
@@ -34,9 +36,26 @@ const getTokenFrom = (req) => {
 	return null;
 };
 
-const tokenExtractor = (req, res, next) => {
+const tokenExtractor = async (req, res, next) => {
 	const token = getTokenFrom(req);
 	req.token = token;
+
+	const sessions = await Session.findAll({
+		where: {
+			[Op.and]: [
+				{
+					userId: jwt.verify(req.token, SECRET).id,
+				},
+				{
+					token,
+				},
+			],
+		},
+	});
+	if (!sessions.length) {
+		return res.status(401).json({ error: "expired token" });
+	}
+
 	next();
 };
 

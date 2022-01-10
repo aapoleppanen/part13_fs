@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const router = require("express").Router();
 
 const { SECRET } = require("../util/config");
-const User = require("../models/user");
+const { User, Session } = require("../models/");
 
 router.post("/", async (req, res) => {
 	const body = req.body;
@@ -17,12 +17,23 @@ router.post("/", async (req, res) => {
 		return res.status(401).json({ error: "Invalid usr or pass" });
 	}
 
+	if (user.disabled) {
+		await Session.destroy({
+			where: {
+				userId: user.id,
+			},
+		});
+		return res.status(401).json({ error: "user is disabled" });
+	}
+
 	const userForToken = {
 		username: user.username,
 		id: user.id,
 	};
 
 	const token = jwt.sign(userForToken, SECRET);
+
+	await Session.create({ userId: user.id, token: token });
 
 	res.status(200).send({
 		token,
