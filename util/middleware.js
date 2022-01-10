@@ -1,5 +1,5 @@
 const { request } = require("express");
-const { Blog, User } = require("../models");
+const { Blog, User, ReadingList } = require("../models");
 
 const jwt = require("jsonwebtoken");
 
@@ -55,10 +55,22 @@ const userExtractor = async (req, res, next) => {
 	next();
 };
 
+const readingListExtractor = async (req, res, next) => {
+	req.readingList = await ReadingList.findByPk(req.params.id);
+	try {
+		if (req.readingList === null)
+			throw new Error(`No readinglist with id ${req.params.id} found`);
+	} catch (e) {
+		next(e);
+	}
+	next();
+};
+
 module.exports = {
 	blogFinder,
 	unknownEndpoint,
 	errorHandler,
 	tokenExtractor,
 	userExtractor,
+	readingListExtractor,
 };

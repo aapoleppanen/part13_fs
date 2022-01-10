@@ -17,12 +17,29 @@ router.post("/", async (req, res, next) => {
 		const user = await User.create(req.body);
 		res.json(user);
 	} catch (e) {
+		console.log(e);
 		next(e);
 	}
 });
 
 router.get("/:id", async (req, res) => {
-	const user = await User.findByPk(req.params.id);
+	let where = {};
+
+	if (req.query.read) where.read = req.query.read === "true";
+
+	const user = await User.findByPk(req.params.id, {
+		include: {
+			model: Blog,
+			as: "readings",
+			through: {
+				attributes: ["id", "read"],
+				as: "readingLists",
+				where,
+			},
+			attributes: { exclude: ["userId"] },
+		},
+	});
+
 	if (user) res.json(user);
 	else res.status(404).end();
 });
